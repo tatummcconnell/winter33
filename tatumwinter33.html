@@ -56,7 +56,7 @@ function sensop(mag) {
             $("#allsensors").toggleClass('hidden');
         });
         var socket = io.connect('http://10.48.102.108:3001');
-        batterycapacity(socket);
+        //batterycapacity(socket);
         leftsignal(socket);
         front_leftsignal(socket);
         front_rightsignal(socket);
@@ -253,38 +253,204 @@ $('body').keydown(function(event) {
 </script>
 
 <script>
-var dataSet = [{
-        //label: "front-right",
-        data: 3,
-        color: "#005CDE"
-    }, {
-        //label: "right",
-        data: 3,
-        color: "#ffffff"
-    }];
+    $(document).ready(function() {
 
-    var options = {
+
+        //chargeplot = makeChargePlot();
+
+        $("#togglesensors").click(function(e) {
+            //console.log("togglesensors");
+            $("#allsensors").toggleClass('hidden');
+        });
+        //var socket = io.connect('http://10.48.102.xxx:3001'); //change this to match your robot
+        var socket = io.connect('http://10.48.102.108:3001'); //change this to match your robot
+
+        socket.on('disconnect', function() {
+            console.log('got disconnected');
+        });
+
+        socket.on('sensordata', function(data) {
+            var cap = data.battery.capacity.percent;
+            cap = cap * 100
+            chargeData[0].data = cap;
+            chargeData[1].data = 100 - cap;
+            $.plot($("#batterycapacity"), chargeData, chargeOptions);
+
+
+            $("#allsensors").text(JSON.stringify(data));
+        });
+
+
+        $("#passiveMode").click(function(e) {
+            socket.emit('passiveMode');
+        });
+        $("#safeMode").click(function(e) {
+            socket.emit('safeMode');
+        });
+
+        $("#fullMode").click(function(e) {
+            socket.emit('fullMode');
+        });
+
+
+        $('body').keydown(function(event) {
+            console.log(event.which);
+            speed = $("#speed").text();
+            //speed = 100;
+            if (event.which === 87 || event.which === 38) //w, up arrow - move forward
+            {
+                //socket.emit('sing', [[300,300]]);
+                event.preventDefault();
+                speed = $("#speed").text();
+                speed = speed * 1 + 25;
+                $("#speed").text(speed);
+                socket.emit('drive', {
+                    left: speed,
+                    right: speed
+                });
+
+            }
+
+            if (event.which === 83 || event.which === 40) //s, down arrow - move backward
+            {
+                event.preventDefault();
+                speed = $("#speed").text();
+                speed = speed * 1 - 25;
+                $("#speed").text(speed);
+                socket.emit('drive', {
+                    left: speed,
+                    right: speed
+                });
+            }
+
+
+
+            if (event.which === 37) //left arrow - move right
+            {
+                event.preventDefault();
+                speed = $("#speed").text();
+                speed = 25;
+                $("#speed").text(speed);
+                socket.emit('drive', {
+                    left: speed,
+                    right: -speed
+                });
+
+            }
+
+            if (event.which === 65) //a - forward left
+            {
+                event.preventDefault();
+                speed = $("#speed").text();
+                (speed < 25) ? speed = 25: speed = speed;
+                $("#speed").text(speed);
+                socket.emit('drive', {
+                    left: Math.round(speed),
+                    right: Math.round(speed - 25)
+                });
+
+            }
+
+            if (event.which === 68) //d - forward left
+            {
+                event.preventDefault();
+                speed = $("#speed").text();
+                (speed < 25) ? speed = 25: speed = speed;
+                $("#speed").text(speed);
+                socket.emit('drive', {
+                    left: Math.round(speed - 25),
+                    right: Math.round(speed)
+                });
+
+            }
+
+            if (event.which === 39) //right arrow - move left
+            {
+                event.preventDefault();
+                speed = $("#speed").text();
+                speed = 25;
+                $("#speed").text(speed);
+                socket.emit('drive', {
+                    left: -speed,
+                    right: speed
+                });
+            }
+
+            if (event.which === 32) //space - stop
+
+            {
+                event.preventDefault();
+
+
+
+                function slowtostop() {
+                    speed = $("#speed").text();
+                    if (Math.abs(speed) <= 50) {
+                        speed = 0;
+                        $("#speed").text(speed);
+                        socket.emit('drive', {
+                            left: speed,
+                            right: speed
+                        });
+                        return;
+                    }
+                    setTimeout(function() {
+                        speed = $("#speed").text() * 1;
+                        speed += speed > 0 ? Number(-75) : Number(75);
+                        $("#speed").text(speed);
+                        socket.emit('drive', {
+                            left: speed,
+                            right: speed
+                        });
+                        slowtostop();
+                    }, 40);
+                }
+
+                slowtostop();
+
+            }
+        });
+
+    });
+    </script>
+    <script>
+    var chargeData = [
+
+        {
+            label: "charged",
+            data: 100,
+            color: "#BCF7C7"
+        }, {
+            label: "discharged",
+            data: 0,
+            color: "#F7BCBC"
+
+        }
+    ];
+
+    var chargeOptions = {
+        legend: {
+            show: false
+        },
         series: {
             pie: {
                 show: true,
-                innerRadius: 0.5
+                innerRadius: 0.3,
+                label: {
+                    show: true,
+                    radius: .5,
+                    background: {
+                        opacity: 0.5,
+                        color: '#000'
+                    }
+
+                }
             }
         }
     };
+    </script>
 
-    $(document).ready(function() {
-        $.plot($("#batterycapacity"), dataSet, options);
-
-
-        $("#batterycapacity").click(function() {
-            dataSet[0].data = Number(dataSet[0].data) + 1; 
-            console.log(dataSet);
-
-            $.plot($("#batterycapacity"), dataSet, options);
-        });
-    });
-
-</script> 
+    
 
 </head>
 
@@ -389,6 +555,25 @@ body{
     float:left;
 }
 
+.column6{
+
+}
+
+.toggle{
+    margin-left:-15px;
+}
+
+.text{
+    color:black;
+}
+
+.play-music{
+    margin-left:-6px;
+    width:300px;
+    border:solid 5px #dddddd;
+}
+
+
 </style> 
 
 <body>
@@ -481,11 +666,10 @@ body{
 
                     </div>
 
-                    <br>
 
                     <div class="row">
                         <div class="col-xs-3">
-                            <button id="playsong" class="btn btn-lg">Play Music
+                            <button id="playsong" class="btn play-music">Play Music
                                 <span class="glyphicon glyphicon-music"></span>
                             </button>
                         </div>
@@ -505,39 +689,37 @@ body{
                     <div class="col-md-3" id="front_right" style="height:300px">.....</div>
                 </div>
                 <br>
-                <div id="batterycapacity" style="width:400px;height:300px"></div>
                 <div class="row column5">
+                <div id="batterycapacity" style="width:400px;height:300px"></div>
+            </div> 
                     <br>
                     <br>
+                <div class="row column6"> 
                     <div class="col-xs-6">
-                        <div class="row">
-                            <br><br>
                             <div class="col-xs-6 col-sm-offset-6">
-                                <button id="togglesensors">Toggle Sensors</button>
-                                <br><br><br>
-                                <div class="hidden" id="allsensors">...</div>
+                                <button class="btn-large toggle" id="togglesensors">Toggle Sensors</button>
+                                <br>                                <div class="hidden" id="allsensors">...</div>
                                 <div class="row signals">
-                                    <div class="left_signal">
+                                    <div class="left_signal text">
                                         left
                                     </div>
-                                    <div class="front_left_signal">
+                                    <div class="front_left_signal text">
                                         front_left
                                     </div>
-                                    <div class="front_right">
+                                    <div class="front_right text">
                                         front_right
                                     </div>
-                                    <div class="left_signal">
+                                    <div class="left_signal text">
                                         right
                                     </div>
                                     <br>
-                                </div>
+                                </div> 
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
 </body>
 
 </html>
